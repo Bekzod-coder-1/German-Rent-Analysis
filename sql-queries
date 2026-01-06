@@ -1,0 +1,209 @@
+CREATE OR REPLACE TABLE `trains-db-481922.real_estate_raw.cleaned__immo_data` AS
+SELECT 
+    TRIM(regio1) AS state,
+    TRIM(regio2) AS city,
+    CAST(totalRent AS FLOAT64) AS total_rent,
+    CAST(livingSpace AS FLOAT64) AS living_space,
+    -- Wir berechnen den Preis pro m² direkt mit
+    ROUND(SAFE_DIVIDE(totalRent, livingSpace), 2) AS price_per_sqm,
+    yearConstructed AS construction_year,
+    typeOfFlat AS apartment_type,
+    heatingType AS heating_type,
+    hasKitchen AS has_kitchen
+FROM 
+    `trains-db-481922.real_estate_raw.immo_data`
+WHERE 
+    -- Datenreinigung: Wir behalten nur plausible Werte
+    totalRent BETWEEN 100 AND 10000 
+    AND livingSpace BETWEEN 10 AND 500
+    AND (totalRent / livingSpace) BETWEEN 2 AND 100 -- Keine 1€ Mieten, keine 500€/m² Luxusfehler
+    AND regio1 IS NOT NULL
+    AND regio2 IS NOT NULL;
+--No matching signature for operator BETWEEN Argument types: STRING, INT64, INT64 Signature: (T1) BETWEEN (T1) AND (T1) Unable to find common supertype for templated argument <T1> Input types for <T1>: {INT64, STRING} at [17
+--Integer und String nicht zu vergleichen
+-- nochmal Versuch
+CREATE OR REPLACE TABLE `trains-db-481922.real_estate_raw.cleaned__immo_data` AS
+SELECT 
+    TRIM(regio1) AS state,
+    TRIM(regio2) AS city,
+    SAFE_CAST(totalRent AS FLOAT64) AS total_rent,
+    SAFE_CAST(livingSpace AS FLOAT64) AS living_space,
+    -- Berechnung Preis pro m²
+    ROUND(SAFE_DIVIDE(SAFE_CAST(totalRent AS FLOAT64), SAFE_CAST(livingSpace AS FLOAT64)), 2) AS price_per_sqm,
+    SAFE_CAST(yearConstructed AS INT64) AS construction_year,
+    typeOfFlat AS apartment_type,
+    heatingType AS heating_type,
+    hasKitchen AS has_kitchen
+FROM 
+    `trains-db-481922.real_estate_raw.immo_data`
+WHERE 
+    -- Hier konvertieren wir die Typen direkt für den Vergleich
+    SAFE_CAST(totalRent AS FLOAT64) BETWEEN 100 AND 10000 
+    AND SAFE_CAST(livingSpace AS FLOAT64) BETWEEN 10 AND 500
+    AND SAFE_DIVIDE(SAFE_CAST(totalRent AS FLOAT64), SAFE_CAST(livingSpace AS FLOAT64)) BETWEEN 2 AND 100
+    AND regio1 IS NOT NULL;
+-- Es gibt noch null und NA Werte
+-- Full Cleaning
+CREATE OR REPLACE TABLE `trains-db-481922.real_estate_raw.cleaned__immo_data` AS
+SELECT 
+    TRIM(regio1) AS state,
+    TRIM(regio2) AS city,
+    SAFE_CAST(totalRent AS FLOAT64) AS total_rent,
+    SAFE_CAST(livingSpace AS FLOAT64) AS living_space,
+    ROUND(SAFE_DIVIDE(SAFE_CAST(totalRent AS FLOAT64), SAFE_CAST(livingSpace AS FLOAT64)), 2) AS price_per_sqm,
+    SAFE_CAST(yearConstructed AS INT64) AS construction_year,
+    typeOfFlat AS apartment_type,
+    heatingType AS heating_type,
+    hasKitchen AS has_kitchen
+FROM 
+    `trains-db-481922.real_estate_raw.immo_data`
+WHERE 
+    -- 1. Check auf echte NULL-Werte
+    totalRent IS NOT NULL 
+    AND livingSpace IS NOT NULL
+    AND regio1 IS NOT NULL
+    
+    -- 2. Check auf den Text 'na' (wichtig, falls es als String importiert wurde)
+    AND LOWER(totalRent) != 'na'
+    AND LOWER(livingSpace) != 'na'
+    
+    -- 3. Plausibilitäts-Check (wie zuvor)
+    AND SAFE_CAST(totalRent AS FLOAT64) BETWEEN 100 AND 10000 
+    AND SAFE_CAST(livingSpace AS FLOAT64) BETWEEN 10 AND 500
+    AND SAFE_DIVIDE(SAFE_CAST(totalRent AS FLOAT64), SAFE_CAST(livingSpace AS FLOAT64)) BETWEEN 2 AND 100;
+--CSV-Datei das Dezimaltrennzeichen ein Komma (z.B. 65,50) statt eines Punktes (65.50)
+CREATE OR REPLACE TABLE `trains-db-481922.real_estate_raw.cleaned_immo_data` AS
+SELECT 
+    TRIM(regio1) AS state,
+    TRIM(regio2) AS city,
+    -- Komma durch Punkt ersetzen, dann erst CAST
+    SAFE_CAST(REPLACE(totalRent, ',', '.') AS FLOAT64) AS total_rent,
+    SAFE_CAST(REPLACE(livingSpace, ',', '.') AS FLOAT64) AS living_space,
+    -- Berechnung Preis pro m² mit den neuen Werten
+    ROUND(SAFE_DIVIDE(
+        SAFE_CAST(REPLACE(totalRent, ',', '.') AS FLOAT64), 
+        SAFE_CAST(REPLACE(livingSpace, ',', '.') AS FLOAT64)
+    ), 2) AS price_per_sqm,
+    SAFE_CAST(yearConstructed AS INT64) AS construction_year,
+    typeOfFlat AS apartment_type,
+    heatingType AS heating_type,
+    hasKitchen AS has_kitchen
+FROM 
+    `trains-db-481922.real_estate_raw.immo_data`
+WHERE 
+    -- Hier auch REPLACE nutzen, damit der Filter korrekt funktioniert
+    SAFE_CAST(REPLACE(totalRent, ',', '.') AS FLOAT64) BETWEEN 100 AND 10000 
+    AND SAFE_CAST(REPLACE(livingSpace, ',', '.') AS FLOAT64) BETWEEN 10 AND 500
+    AND (SAFE_CAST(REPLACE(totalRent, ',', '.') AS FLOAT64) / SAFE_CAST(REPLACE(livingSpace, ',', '.') AS FLOAT64)) BETWEEN 2 AND 100
+    AND regio1 IS NOT NULL
+    AND LOWER(totalRent) != 'na'
+    AND LOWER(livingSpace) != 'na';
+-- nochmal Versuch
+CREATE OR REPLACE TABLE `trains-db-481922.real_estate_raw.cleaned_immo_data` AS
+SELECT 
+    TRIM(regio1) AS state,
+    TRIM(regio2) AS city,
+    SAFE_CAST(totalRent AS FLOAT64) AS total_rent,
+    SAFE_CAST(livingSpace AS FLOAT64) AS living_space,
+    ROUND(SAFE_DIVIDE(SAFE_CAST(totalRent AS FLOAT64), SAFE_CAST(livingSpace AS FLOAT64)), 2) AS price_per_sqm,
+    SAFE_CAST(yearConstructed AS INT64) AS construction_year,
+    typeOfFlat AS apartment_type,
+    heatingType AS heating_type,
+    hasKitchen AS has_kitchen
+FROM 
+    `trains-db-481922.real_estate_raw.immo_data`
+WHERE 
+    -- Wir wandeln hier für den Vergleich alles explizit in Zahlen um
+    SAFE_CAST(totalRent AS FLOAT64) BETWEEN 100 AND 10000 
+    AND SAFE_CAST(livingSpace AS FLOAT64) BETWEEN 10 AND 500
+    AND SAFE_DIVIDE(SAFE_CAST(totalRent AS FLOAT64), SAFE_CAST(livingSpace AS FLOAT64)) BETWEEN 2 AND 100
+    AND regio1 IS NOT NULL;
+
+SELECT 
+    state,
+    COUNT(*) AS anzahl_angebote,
+    ROUND(AVG(price_per_sqm), 2) AS avg_miete_pro_qm
+FROM 
+    `trains-db-481922.real_estate_raw.cleaned_immo_data`
+GROUP BY 
+    state
+ORDER BY 
+    avg_miete_pro_qm DESC;
+--vergleichen, wie das Baujahr den Preis beeinflusst. Wir teilen die Gebäude in Kategorien ein (Altbau, Nachkriegszeit, Modern, Neubau).
+
+SELECT 
+    CASE 
+        WHEN construction_year < 1945 THEN 'Altbau (vor 1945)'
+        WHEN construction_year BETWEEN 1945 AND 1990 THEN 'Nachkriegsbau (1945-1990)'
+        WHEN construction_year BETWEEN 1991 AND 2010 THEN 'Modern (1991-2010)'
+        WHEN construction_year > 2010 THEN 'Neubau (ab 2011)'
+        ELSE 'Unbekannt'
+    END AS baujahr_kategorie,
+    ROUND(AVG(price_per_sqm), 2) AS avg_miete,
+    COUNT(*) AS anzahl
+FROM 
+    `trains-db-481922.real_estate_raw.cleaned_immo_data`
+WHERE 
+    construction_year IS NOT NULL
+GROUP BY 
+    1
+ORDER BY 
+    avg_miete DESC;
+
+WITH bundesland_preise AS (
+    SELECT 
+        state,
+        COUNT(*) AS anzahl_angebote,
+        ROUND(AVG(price_per_sqm), 2) AS avg_miete_bundesland
+    FROM 
+        `trains-db-481922.real_estate_raw.cleaned_immo_data`
+    GROUP BY 
+        state
+)
+
+SELECT 
+    state,
+    anzahl_angebote,
+    avg_miete_bundesland,
+    -- Hier berechnen wir den Schnitt über alle Zeilen (Ganz Deutschland)
+    ROUND(AVG(avg_miete_bundesland) OVER(), 2) AS deutschland_schnitt,
+    -- Die Differenz in Prozent
+    ROUND((avg_miete_bundesland / AVG(avg_miete_bundesland) OVER() - 1) * 100, 2) AS abweichung_prozent
+FROM 
+    bundesland_preise
+ORDER BY 
+    abweichung_prozent DESC;
+
+--Generationen-Analyse
+
+SELECT 
+    CASE 
+        WHEN construction_year < 1900 THEN 'Historisch (vor 1900)'
+        WHEN construction_year BETWEEN 1900 AND 1945 THEN 'Vorkriegsbau (1900-1945)'
+        WHEN construction_year BETWEEN 1946 AND 2000 THEN 'Nachkriegs/Moderne (1946-2000)'
+        WHEN construction_year > 2000 THEN 'Neubau (ab 2001)'
+        ELSE 'Unbekannt'
+    END AS epoche,
+    COUNT(*) AS anzahl_objekte,
+    ROUND(AVG(price_per_sqm), 2) AS avg_miete
+FROM 
+    `trains-db-481922.real_estate_raw.cleaned_immo_data`
+GROUP BY 1
+ORDER BY avg_miete DESC;
+
+--Der Küchen-Effekt
+
+SELECT 
+    has_kitchen,
+    COUNT(*) AS anzahl,
+    ROUND(AVG(price_per_sqm), 2) AS avg_miete,
+    ROUND(AVG(living_space), 2) AS avg_groesse
+FROM 
+    `trains-db-481922.real_estate_raw.cleaned_immo_data`
+GROUP BY 1;
+
+--Überschrift: Analyse des deutschen Mietmarktes (200k+ Inserate).
+--Teil 1 (Geo): Wo ist es am teuersten? (Die Tabelle, die wir schon haben).
+--Teil 2 (Zeit): Welchen Einfluss hat das Alter der Immobilie auf den Preis?
+--Teil 3 (Ausstattung): Welche Faktoren (wie Einbauküchen) treiben die Miete nach oben?
+--alle 3 CSV Dateien gespeichert
