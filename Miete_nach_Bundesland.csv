@@ -1,0 +1,17 @@
+state,anzahl_angebote,avg_miete_bundesland,deutschland_schnitt,abweichung_prozent
+Hamburg,3391,17.31,11.78,46.97
+Berlin,9723,17.21,11.78,46.12
+Bayern,18482,16.04,11.78,36.18
+Hessen,14625,15.35,11.78,30.33
+Baden_Württemberg,13331,14.7,11.78,24.81
+Schleswig_Holstein,5849,11.37,11.78,-3.47
+Rheinland_Pfalz,6578,11.04,11.78,-6.27
+Bremen,2514,10.94,11.78,-7.12
+Nordrhein_Westfalen,50651,10.64,11.78,-9.66
+Niedersachsen,12253,10.37,11.78,-11.96
+Saarland,1017,9.79,11.78,-16.88
+Brandenburg,6403,9.68,11.78,-17.81
+Mecklenburg_Vorpommern,5957,9.02,11.78,-23.42
+Sachsen,52032,8.63,11.78,-26.73
+Thüringen,7330,8.21,11.78,-30.29
+Sachsen_Anhalt,17731,8.15,11.78,-30.8
